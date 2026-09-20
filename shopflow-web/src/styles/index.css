@@ -1,0 +1,84 @@
+/* 全局样式：只保留必要的重置与通用类，组件样式一律写在各自的 scoped 里 */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    Arial, sans-serif;
+  font-size: 14px;
+  color: #303133;
+  background-color: #f0f2f5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 页面容器：统一内边距 */
+.page-container {
+  padding: 16px;
+}
+
+/* 查询表单卡片 */
+.search-card {
+  margin-bottom: 12px;
+}
+
+.search-card .el-form-item {
+  margin-bottom: 0;
+}
+
+/* 表格上方的操作按钮区 */
+.table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* 分页组件统一右对齐 */
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* 卡片标题 */
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 统计卡片 */
+.stat-card {
+  border-radius: 8px;
+}
+
+.stat-card .stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.stat-card .stat-label {
+  color: #909399;
+  font-size: 13px;
+}
+
+/* 文本省略 */
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
