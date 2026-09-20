@@ -1,5 +1,6 @@
 package com.shopflow.config;
 
+import com.shopflow.security.JwtAuthenticationFilter;
 import com.shopflow.security.RestAccessDeniedHandler;
 import com.shopflow.security.RestAuthenticationEntryPoint;
 import com.shopflow.security.SecurityConstants;
@@ -16,6 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security 配置。
@@ -41,6 +43,8 @@ public class SecurityConfig {
 
     private final RestAccessDeniedHandler restAccessDeniedHandler;
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -59,6 +63,10 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(restAuthenticationEntryPoint)
                         .accessDeniedHandler(restAccessDeniedHandler));
+
+        // JWT 校验必须挂在 Spring Security 过滤器链上，并位于用户名密码认证之前；
+        // 否则它只会作为普通 Servlet 过滤器被注册，排在安全链之后，导致鉴权永远不生效。
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

@@ -18,8 +18,10 @@ import java.nio.charset.StandardCharsets;
 /**
  * 未认证处理器。
  *
- * <p>Spring Security 默认返回 302 跳转或空 401 页面，对前后端分离不友好。
- * 这里统一返回 JSON 响应体，保证「认证失败」与「业务失败」的响应结构完全一致。
+ * <p>Spring Security 默认返回 302 跳转或空白 401 页面，对前后端分离不友好。
+ * 这里统一返回 JSON，并根据 JwtAuthenticationFilter 写入的原因区分三种情况：
+ * 未携带令牌（40101）、令牌过期（40102）、令牌非法或已登出（40103）。
+ * 前端可以据此决定「跳登录页」还是「静默刷新令牌后重试」。
  *
  * @author shopflow
  */
@@ -33,8 +35,22 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        log.warn("未认证访问 | uri={} | message={}", request.getRequestURI(), authException.getMessage());
-        writeJson(response, ResultCode.UNAUTHORIZED);
+        String jwtError = (String) request.getAttribute(JwtAuthenticationFilter.ATTR_JWT_ERROR);
+        ResultCode resultCode = resolveResultCode(jwtError);
+        log.warn("未认证访问 | uri={} | reason={} | message={}",
+                request.getRequestURI(), jwtError == null ? "no-token" : jwtError, authException.getMessage());
+        writeJson(response, resultCode);
+    }
+
+    private ResultCode resolveResultCode(String jwtError) {
+        if (JwtAuthenticationFilter.ERROR_EXPIRED.equals(jwtError)) {
+            return ResultCode.TOKEN_EXPIRED;
+        }
+        if (JwtAuthenticationFilter.ERROR_INVALID.equals(jwtError)
+                || JwtAuthenticationFilter.ERROR_REVOKED.equals(jwtError)) {
+            return ResultCode.TOKEN_INVALID;
+        }
+        return ResultCode.UNAUTHORIZED;
     }
 
     private void writeJson(HttpServletResponse response, ResultCode resultCode) throws IOException {
