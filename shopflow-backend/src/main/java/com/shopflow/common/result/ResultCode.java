@@ -38,6 +38,7 @@ public enum ResultCode {
     UNAUTHORIZED(40101, "未登录或登录已失效", HttpStatus.UNAUTHORIZED),
     TOKEN_EXPIRED(40102, "登录凭证已过期，请重新登录", HttpStatus.UNAUTHORIZED),
     TOKEN_INVALID(40103, "登录凭证无效", HttpStatus.UNAUTHORIZED),
+    LOGIN_FAILED(40104, "用户名或密码错误", HttpStatus.UNAUTHORIZED),
 
     // ==================== 权限 403xx ====================
     FORBIDDEN(40301, "没有该操作权限", HttpStatus.FORBIDDEN),

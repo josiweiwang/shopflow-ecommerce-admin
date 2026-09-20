@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  商品分页查询
+
+  为什么放在 XML 而不是用条件构造器：
+  1. 需要 JOIN 分类表与库存表，一次查询返回列表所需的全部字段，避免 N+1；
+  2. ORDER BY 涉及动态字段，必须做白名单控制，用 <choose> 硬编码可选项最安全；
+  3. 自定义 XML 查询不会自动带上逻辑删除条件，因此 WHERE 中显式写 p.deleted = 0。
+-->
+<mapper namespace="com.shopflow.mapper.ProductMapper">
+
+    <select id="selectPageByCondition" resultType="com.shopflow.vo.product.ProductPageVO">
+        SELECT p.id,
+               p.category_id,
+               p.name,
+               p.sku,
+               p.subtitle,
+               p.main_image,
+               p.price,
+               p.original_price,
+               p.status,
+               p.sales,
+               p.sort,
+               p.create_time,
+               p.update_time,
+               c.name          AS category_name,
+               i.available_stock,
+               i.locked_stock,
+               i.total_stock,
+               i.warn_stock
+        FROM product p
+                 LEFT JOIN category c ON c.id = p.category_id AND c.deleted = 0
+                 LEFT JOIN inventory i ON i.product_id = p.id
+        WHERE p.deleted = 0
+        <if test="query.categoryId != null">
+            AND p.category_id = #{query.categoryId}
+        </if>
+        <if test="query.status != null">
+            AND p.status = #{query.status}
+        </if>
+        <if test="query.minPrice != null">
+            AND p.price &gt;= #{query.minPrice}
+        </if>
+        <if test="query.maxPrice != null">
+            AND p.price &lt;= #{query.maxPrice}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (p.name LIKE CONCAT('%', #{query.keyword}, '%')
+                OR p.sku LIKE CONCAT('%', #{query.keyword}, '%'))
+        </if>
+        ORDER BY
+        <choose>
+            <when test="query.sortBy == 'price'">p.price</when>
+            <when test="query.sortBy == 'sales'">p.sales</when>
+            <when test="query.sortBy == 'updateTime'">p.update_time</when>
+            <when test="query.sortBy == 'createTime'">p.create_time</when>
+            <otherwise>p.sort</otherwise>
+        </choose>
+        <choose>
+            <when test="query.order == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        , p.id DESC
+    </select>
+</mapper>

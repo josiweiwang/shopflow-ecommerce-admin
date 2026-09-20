@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  订单分页查询
+
+  说明：
+  1. 连表带出下单用户名，避免前端逐行再查用户；
+  2. itemCount / totalQuantity 用相关子查询计算，单页最多 100 行，代价可控；
+     若订单明细量级继续增长，可改为按 order_id 预聚合的统计表；
+  3. 自定义 SQL 不享受逻辑删除自动拼接，因此显式写 o.deleted = 0；
+  4. 前台用户的数据范围由服务端强制注入 query.userId，前端无法越权查询他人订单。
+-->
+<mapper namespace="com.shopflow.mapper.OrdersMapper">
+
+    <select id="selectPageByCondition" resultType="com.shopflow.vo.order.OrderPageVO">
+        SELECT o.id,
+               o.order_no,
+               o.user_id,
+               u.username,
+               o.total_amount,
+               o.freight_amount,
+               o.pay_amount,
+               o.status,
+               o.receiver_name,
+               o.receiver_phone,
+               o.expire_time,
+               o.pay_time,
+               o.create_time,
+               (SELECT COUNT(*) FROM order_item oi WHERE oi.order_id = o.id)             AS item_count,
+               (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_item oi WHERE oi.order_id = o.id) AS total_quantity
+        FROM orders o
+                 LEFT JOIN sys_user u ON u.id = o.user_id
+        WHERE o.deleted = 0
+        <if test="query.userId != null">
+            AND o.user_id = #{query.userId}
+        </if>
+        <if test="query.orderNo != null and query.orderNo != ''">
+            AND o.order_no = #{query.orderNo}
+        </if>
+        <if test="query.status != null">
+            AND o.status = #{query.status}
+        </if>
+        <if test="query.startTime != null">
+            AND o.create_time &gt;= #{query.startTime}
+        </if>
+        <if test="query.endTime != null">
+            AND o.create_time &lt;= #{query.endTime}
+        </if>
+        ORDER BY o.id DESC
+    </select>
+</mapper>

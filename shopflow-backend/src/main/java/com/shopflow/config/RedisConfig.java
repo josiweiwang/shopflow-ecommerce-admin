@@ -6,10 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -44,6 +47,38 @@ public class RedisConfig {
         template.setHashValueSerializer(jsonSerializer);
         template.afterPropertiesSet();
         return template;
+    }
+
+    /**
+     * 库存预扣脚本：把「读库存 -> 判断 -> 扣减」放在 Redis 内原子执行。
+     *
+     * <p>如果拆成多条命令，两个并发请求可能同时读到「还剩 1 件」而各自扣减成功，
+     * 造成超卖。Lua 脚本在 Redis 中单线程原子执行，从根本上消除这个竞态。
+     */
+    @Bean
+    public RedisScript<Long> stockLockScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/stock_lock.lua"));
+        script.setResultType(Long.class);
+        return script;
+    }
+
+    /** 库存释放脚本 */
+    @Bean
+    public RedisScript<Long> stockReleaseScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/stock_release.lua"));
+        script.setResultType(Long.class);
+        return script;
+    }
+
+    /** 分布式锁释放脚本：比较 token 后再删除，防止误删他人锁 */
+    @Bean
+    public RedisScript<Long> unlockScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("lua/unlock.lua"));
+        script.setResultType(Long.class);
+        return script;
     }
 
     private ObjectMapper buildObjectMapper() {
