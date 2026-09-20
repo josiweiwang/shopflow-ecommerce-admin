@@ -50,6 +50,9 @@ shopflow:
   order:
     # 下单后多少分钟未支付自动关单
     pay-timeout-minutes: 30
+  product:
+    # 商品详情缓存开关：压测时可关闭，用于对比"缓存 vs 每次回源"的性能差异
+    detail-cache-enabled: true
   inventory:
     # 是否启用 Redis 库存缓存（压测对比时可关掉，用于验证优化效果）
     redis-cache-enabled: true

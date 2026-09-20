@@ -25,8 +25,11 @@ import com.shopflow.service.ProductService;
 import com.shopflow.service.StockCacheService;
 import com.shopflow.vo.product.ProductDetailVO;
 import com.shopflow.vo.product.ProductPageVO;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
@@ -90,6 +93,18 @@ public class ProductServiceImpl implements ProductService {
 
     private final ObjectMapper objectMapper;
 
+    /** 商品详情缓存开关：压测时关闭以量化缓存收益 */
+    private final boolean detailCacheEnabled;
+
+    /** 缓存命中/未命中计数器：让"缓存到底有没有用"变成可观测的数字，而不是靠感觉 */
+    private final Counter cacheHitCounter;
+
+    private final Counter cacheMissCounter;
+
+    private final Counter cacheNullHitCounter;
+
+    private final Counter cacheRebuildCounter;
+
     private final Random random = new Random();
 
     public ProductServiceImpl(ProductMapper productMapper,
@@ -99,7 +114,9 @@ public class ProductServiceImpl implements ProductService {
                               StockCacheService stockCacheService,
                               StringRedisTemplate stringRedisTemplate,
                               @Qualifier("unlockScript") RedisScript<Long> unlockScript,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              @Value("${shopflow.product.detail-cache-enabled:true}") boolean detailCacheEnabled,
+                              MeterRegistry meterRegistry) {
         this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
         this.inventoryMapper = inventoryMapper;
@@ -108,6 +125,11 @@ public class ProductServiceImpl implements ProductService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.unlockScript = unlockScript;
         this.objectMapper = objectMapper;
+        this.detailCacheEnabled = detailCacheEnabled;
+        this.cacheHitCounter = meterRegistry.counter("shopflow.product.cache.hit");
+        this.cacheMissCounter = meterRegistry.counter("shopflow.product.cache.miss");
+        this.cacheNullHitCounter = meterRegistry.counter("shopflow.product.cache.null_hit");
+        this.cacheRebuildCounter = meterRegistry.counter("shopflow.product.cache.rebuild");
     }
 
     @Override
@@ -122,12 +144,19 @@ public class ProductServiceImpl implements ProductService {
         if (id == null) {
             throw new BizException(ResultCode.PARAM_INVALID, "商品ID不能为空");
         }
+        if (!detailCacheEnabled) {
+            // 压测对比用：关闭缓存后每次请求都回源数据库，用于量化缓存带来的收益
+            return loadDetailFromDb(id);
+        }
         String cacheKey = CacheKeys.productDetail(id);
         ProductDetailVO cached = readDetailCache(cacheKey);
         if (cached != null) {
+            cacheHitCounter.increment();
             return cached;
         }
+        cacheMissCounter.increment();
         if (hasNullPlaceholder(id)) {
+            cacheNullHitCounter.increment();
             throw new BizException(ResultCode.PRODUCT_NOT_FOUND);
         }
 
@@ -141,6 +170,7 @@ public class ProductServiceImpl implements ProductService {
                 if (doubleCheck != null) {
                     return doubleCheck;
                 }
+                cacheRebuildCounter.increment();
                 ProductDetailVO loaded = loadDetailFromDb(id);
                 writeDetailCache(cacheKey, loaded);
                 return loaded;
@@ -312,6 +342,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void writeDetailCache(String cacheKey, ProductDetailVO vo) {
+        if (!detailCacheEnabled) {
+            return;
+        }
         try {
             long ttlSeconds = DETAIL_CACHE_TTL.toSeconds() + random.nextInt(DETAIL_CACHE_JITTER_SECONDS);
             stringRedisTemplate.opsForValue()
@@ -322,6 +355,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void cacheNullPlaceholder(Long productId) {
+        if (!detailCacheEnabled) {
+            return;
+        }
         try {
             stringRedisTemplate.opsForValue().set(CacheKeys.productDetailNull(productId), "1", NULL_CACHE_TTL);
         } catch (Exception ex) {
