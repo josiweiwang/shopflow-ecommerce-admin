@@ -1,0 +1,33 @@
+# =====================================================================
+# 测试环境：使用 H2 内存库加载完整的 Spring 上下文
+#
+# 目的是让「上下文能否启动、安全链路是否生效、统一响应结构是否正确」
+# 这类回归成本极高的问题在没有 MySQL/Redis 的机器上也能被自动化验证。
+#
+# 真实 MySQL / Redis 的集成测试（订单并发、库存扣减）使用 Testcontainers，
+# 见后续阶段的 *IT 测试类。
+# =====================================================================
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:shopflow;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ''
+    hikari:
+      pool-name: ShopFlowTestPool
+      maximum-pool-size: 5
+      minimum-idle: 1
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    root: warn
+    com.shopflow: info
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

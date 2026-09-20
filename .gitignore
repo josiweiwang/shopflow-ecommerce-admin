@@ -1,0 +1,43 @@
+# ---------- 构建产物 ----------
+target/
+dist/
+build/
+*.class
+*.jar
+*.war
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# ---------- 依赖与本地工具链 ----------
+node_modules/
+.toolchain/
+.mvn/wrapper/maven-wrapper.jar
+
+# ---------- 环境与密钥（禁止入库） ----------
+.env
+.env.local
+*.local.yml
+!application-local.yml.example
+
+# ---------- 日志 ----------
+logs/
+*.log
+*.log.*
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 运行数据 ----------
+data/
+*.pid

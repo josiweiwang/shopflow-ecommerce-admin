@@ -1,0 +1,115 @@
+# =====================================================================
+# ShopFlow 公共配置（所有环境共享）
+# 敏感信息一律通过环境变量注入，不写死在仓库里
+# =====================================================================
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    max-connections: 8192
+    accept-count: 200
+    connection-timeout: 20s
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: shopflow-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+# =====================================================================
+# 业务自定义配置
+# =====================================================================
+shopflow:
+  version: 1.0.0
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8081,http://localhost}
+  jwt:
+    issuer: shopflow
+    # 生产环境必须通过环境变量覆盖
+    secret: ${SHOPFLOW_JWT_SECRET:shopflow-dev-only-secret-please-override-in-production-0123456789}
+    access-token-expire-minutes: 30
+    refresh-token-expire-days: 7
+  order:
+    # 下单后多少分钟未支付自动关单
+    pay-timeout-minutes: 30
+  inventory:
+    # 是否启用 Redis 库存缓存（压测对比时可关掉，用于验证优化效果）
+    redis-cache-enabled: true
+    warn-stock-default: 10
+  page:
+    default-size: 10
+    max-size: 100
+
+# =====================================================================
+# MyBatis-Plus
+# 注意：deleted 采用「删除时写入主键 ID」的策略，保证 (sku, deleted) 这类
+#      唯一索引既能约束活跃数据、又能保留历史删除记录。
+#      因此逻辑删除一律通过 Mapper 自定义 SQL 执行（UPDATE ... SET deleted = id）。
+# =====================================================================
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.shopflow.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      table-underline: true
+      logic-delete-field: deleted
+      logic-not-delete-value: 0
+      logic-delete-value: id
+
+# =====================================================================
+# 接口文档
+# =====================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+
+# =====================================================================
+# Actuator 监控
+# =====================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ShopFlow 电商后台管理系统
+    description: 面向电商后台的商品、库存、订单一体化管理系统
+    version: 1.0.0

@@ -1,0 +1,57 @@
+# =====================================================================
+# 生产环境：连接信息全部来自环境变量，关闭接口文档，日志降噪
+# =====================================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:shopflow}?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:shopflow}
+    password: ${DB_PASSWORD}
+    hikari:
+      pool-name: ShopFlowHikariPool
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      validation-timeout: 3000
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 4
+          max-wait: 2s
+
+  sql:
+    init:
+      mode: never
+
+logging:
+  level:
+    root: warn
+    com.shopflow: info
+
+# 生产环境关闭接口文档，避免暴露内部接口清单
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

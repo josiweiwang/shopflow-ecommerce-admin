@@ -1,0 +1,61 @@
+# =====================================================================
+# 开发环境：本地 MySQL / Redis，打开 SQL 日志与接口文档
+# =====================================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:shopflow}?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      pool-name: ShopFlowHikariPool
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 5s
+      connect-timeout: 3s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3s
+
+  # 初始化脚本需要手动执行，避免误删开发库数据
+  sql:
+    init:
+      mode: never
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+
+mybatis-plus:
+  configuration:
+    # 开发环境打印执行的 SQL，方便核对语句与参数
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    root: info
+    com.shopflow: debug
+    org.springframework.jdbc.core: debug
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true
+
+management:
+  endpoint:
+    health:
+      show-details: always
